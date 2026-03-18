@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Калькулятор (теорія інформації)</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; max-width: 600px; margin: auto; background: #f4f4f9; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input { width: 60px; padding: 5px; margin: 5px; text-align: center; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #result { margin-top: 20px; padding: 15px; background: #e9ecef; border-left: 5px solid #007bff; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Пропускна здатність каналу</h2>
+        <p>Введи матрицю P(Y|X):</p>
+        
+        <div>
+            X=0: <input type="number" id="p00" value="0.98" step="0.01"> (до 0) 
+                 <input type="number" id="p01" value="0.02" step="0.01"> (до 1)<br>
+            X=1: <input type="number" id="p10" value="0.22" step="0.01"> (до 0) 
+                 <input type="number" id="p11" value="0.78" step="0.01"> (до 1)
+        </div>
+        
+        <p>Точність (тау): <input type="number" id="tau" value="0.001" step="0.0001"></p>
+        <button onclick="calculate()">Розрахувати</button>
+
+        <div id="result" style="display:none;">
+            <strong>Результат:</strong><br>
+            C = <span id="capacity"></span> біт/символ<br>
+            Оптимальний вхід p(x): [<span id="px"></span>]<br>
+            Кількість ітерацій: <span id="iters"></span>
+        </div>
+    </div>
+
+    <script>
+        function calculate() {
+            // крадем з html те, що ввели
+            const p = [
+                [parseFloat(document.getElementById('p00').value), parseFloat(document.getElementById('p01').value)],
+                [parseFloat(document.getElementById('p10').value), parseFloat(document.getElementById('p11').value)]
+            ];
+            const tau = parseFloat(document.getElementById('tau').value);
+            
+            // алгоритм "Блейхута-Арімото"
+            let r = [0.5, 0.5]; // база, як в симетричному
+            let c_old = 0;
+            let iterations = 0;
+            let c_new = 0;
+
+            while (iterations < 1000) {
+                iterations++;
+                
+                // p(y) = sum_x p(x) * p(y|x)
+                let py = [
+                    r[0]*p[0][0] + r[1]*p[1][0],
+                    r[0]*p[0][1] + r[1]*p[1][1]
+                ];
+
+                // експоненти
+                let exp = [0, 0];
+                for (let i = 0; i < 2; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < 2; j++) {
+                        if (p[i][j] > 0) {
+                            sum += p[i][j] * Math.log2(p[i][j] / py[j]);
+                        }
+                    }
+                    exp[i] = sum;
+                }
+
+                c_new = Math.max(...exp);
+                
+                if (Math.abs(c_new - c_old) < tau) break;
+                
+                // нові значення
+                let next_r = [
+                    r[0] * Math.pow(2, exp[0]),
+                    r[1] * Math.pow(2, exp[1])
+                ];
+                let sum_r = next_r[0] + next_r[1];
+                r = [next_r[0]/sum_r, next_r[1]/sum_r];
+                c_old = c_new;
+            }
+
+            // гарне виведення
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('capacity').innerText = c_new.toFixed(6);
+            document.getElementById('px').innerText = r.map(n => n.toFixed(4)).join(', ');
+            document.getElementById('iters').innerText = iterations;
+        }
+    </script>
+</body>
+</html>
